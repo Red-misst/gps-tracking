@@ -27,82 +27,114 @@ The solution consists of three main components:
 
 The GPS tracking system follows a client-server architecture with real-time communication capabilities:
 
-```
-┌─────────────────┐       ┌───────────────┐       ┌─────────────────┐
-│                 │       │               │       │                 │
-│  ESP32 Device   │◄─────►│  Node.js      │◄─────►│  Web Dashboard  │
-│  (llytgo.ino)   │       │  Server       │       │  (Client)       │
-│                 │       │  (index.js)   │       │                 │
-└─────────────────┘       └───────────────┘       └─────────────────┘
-        │                                                  ▲
-        │                                                  │
-        │                       SMS/Call                   │
-        ▼                                                  │
-┌─────────────────┐                               ┌────────────────┐
-│                 │                               │                │
-│  Vehicle Owner  │◄──────────────────────────────│  Web Browser   │
-│  Mobile Phone   │                               │                │
-│                 │                               └────────────────┘
-└─────────────────┘
+```mermaid
+flowchart TD
+    %% Main components
+    ESP32[ESP32 Device<br>llytgo.ino] <--> Server[Node.js Server<br>index.js]
+    Server <--> Dashboard[Web Dashboard<br>Client]
+    
+    %% Hardware components attached to ESP32
+    GPS[GPS Module] --> ESP32
+    Modem[Cellular Modem] --> ESP32
+    LimitSwitch[Limit Switch<br>Sensor] --> ESP32
+    LED[Status LED] --> ESP32
+    Buzzer[Alarm Buzzer] --> ESP32
+    
+    %% Mobile alerts
+    ESP32 -- SMS/Call --> OwnerPhone[Vehicle Owner<br>Mobile Phone]
+    Dashboard -- View --> Browser[Web Browser]
+    Browser -- Access --> OwnerPhone
+    
+    %% Communication protocols
+    ESP32 -. HTTP POST .-> Server
+    Server -. WebSocket .-> Dashboard
+    ESP32 -- Cellular Network --> Safaricom[Cellular Provider]
+    
+    %% Styling
+    classDef hardware fill:#e6f7ff,stroke:#0099cc,stroke-width:2px;
+    classDef software fill:#f9f0ff,stroke:#9933cc,stroke-width:2px;
+    classDef communication fill:#fff0e6,stroke:#ff6600,stroke-width:2px;
+    classDef user fill:#e6ffe6,stroke:#009900,stroke-width:2px;
+    
+    class ESP32,GPS,Modem,LimitSwitch,LED,Buzzer hardware;
+    class Server,Dashboard software;
+    class Safaricom communication;
+    class OwnerPhone,Browser user;
 ```
 
 ### Flowchart: System Operation Logic
 
-```
-┌─────────────────┐
-│   System Start  │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Initialize     │
-│  Hardware       │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Connect to     │
-│  Cellular       │
-│  Network        │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Enable GPS     │
-└────────┬────────┘
-         │
-         ▼
-         ┌───────────────────┐
-         │                   │
-         ▼                   ▼
-┌─────────────────┐  ┌───────────────┐
-│  Periodic GPS   │  │ Check Limit   │
-│  Data Collection│  │ Switch        │
-└────────┬────────┘  └───────┬───────┘
-         │                   │
-         ▼                   │
-┌─────────────────┐          │
-│  Send GPS Data  │          │
-│  to Server      │          │
-└────────┬────────┘          │
-         │                   │
-         ▼                   ▼
-┌─────────────────┐  ┌───────────────┐     ┌───────────────┐
-│  Check Remote   │  │ Theft         │     │ Send SMS &    │
-│  Trigger        │──► Detected?     │─Yes─► Call to Owner │
-└─────────────────┘  └───────┬───────┘     └───────────────┘
-                             │
-                             │ No
-                             ▼
-                     ┌───────────────┐
-                     │ Check Config  │
-                     │ Updates       │
-                     └───────┬───────┘
-                             │
-                             ▼
-                     ┌───────────────┐
-                     │ Loop          │
-                     └───────────────┘
+```mermaid
+flowchart TD
+    A[System Start] --> B[Initialize Hardware]
+    B --> B1[Initialize LED & Buzzer]
+    B1 --> B2[Setup GPIO Pins]
+    B2 --> C[Connect to Cellular Network]
+    C --> C1{Network Connected?}
+    C1 -->|No| C2[Retry with Timeout]
+    C2 --> C
+    C1 -->|Yes| D[Enable GPS Module]
+    D --> D1[Configure GPS Parameters]
+    D1 --> D2[Set Acquisition Mode]
+    D2 --> E[Enter Main Loop]
+    
+    %% Main parallel processes
+    E --> F[Periodic GPS Data Collection]
+    E --> G[Check Limit Switch]
+    E --> H[Check Remote Trigger]
+    E --> J[Check Configuration Updates]
+    
+    %% GPS Data Collection and Transmission Flow
+    F --> F1[Obtain GPS Coordinates]
+    F1 --> F2{Valid GPS Data?}
+    F2 -->|No| F3[Use Last Known Position]
+    F2 -->|Yes| F4[Update Current Position]
+    F3 --> F5[Format JSON Data]
+    F4 --> F5
+    F5 --> F6[Send HTTP POST to Server]
+    F6 --> F7{Transmission Successful?}
+    F7 -->|No| F8[Log Error & Retry Later]
+    F7 -->|Yes| F9[Log Success]
+    F8 --> E
+    F9 --> E
+    
+    %% Theft Detection Flow
+    G --> G1{Limit Switch Triggered?}
+    G1 -->|No| G2[Reset Alert Flag if Active]
+    G1 -->|Yes| G3[Set Alert Flag]
+    G3 --> K[Theft Alert Sequence]
+    G2 --> E
+    
+    H --> H1[Query Server for Remote Trigger]
+    H1 --> H2{Trigger Active?}
+    H2 -->|Yes| K
+    H2 -->|No| E
+    
+    %% Theft Alert Sequence
+    K --> K1[Activate Buzzer with Alarm Pattern]
+    K1 --> K2[Flash Warning LED]
+    K2 --> K3[Format SMS with GPS Coordinates]
+    K3 --> K4[Send SMS to Owner]
+    K4 --> K5[Initiate Call to Owner]
+    K5 --> K6[Wait for Timeout]
+    K6 --> K7[End Call]
+    K7 --> E
+    
+    %% Config Update Flow
+    J --> J1[Request Config from Server]
+    J1 --> J2{New Config Available?}
+    J2 -->|Yes| J3[Update System Parameters]
+    J2 -->|No| E
+    J3 --> E
+    
+    %% Styling
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef decision fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef alert fill:#f66,stroke:#333,stroke-width:2px;
+    
+    class F,G,H,J process;
+    class C1,F2,G1,H2,J2 decision;
+    class K,K1,K2,K3,K4,K5 alert;
 ```
 
 ## Hardware Components
@@ -183,12 +215,24 @@ The web-based user interface:
 
 The ESP32 device collects GPS coordinates and sends them to the server:
 
-```
-┌────────────────┐       ┌────────────────┐        ┌────────────────┐
-│                │       │                │        │                │
-│ GPS Acquisition│──────►│ JSON Formatting│───────►│ HTTP POST      │
-│                │       │                │        │ to Server      │
-└────────────────┘       └────────────────┘        └────────────────┘
+```mermaid
+flowchart LR
+    A[GPS Acquisition] --> B[Process Coordinates]
+    B --> C[Format JSON Data]
+    C --> D[Add Device Metadata]
+    D --> E[Send HTTP POST Request]
+    E --> F{Server Response}
+    F -->|Success| G[Log Success]
+    F -->|Failure| H[Retry Logic]
+    H --> E
+    
+    classDef process fill:#d1f0ff,stroke:#0078d7,stroke-width:1px;
+    classDef data fill:#d8f3d8,stroke:#107c10,stroke-width:1px;
+    classDef network fill:#ffefe3,stroke:#d16b00,stroke-width:1px;
+    
+    class A,B process;
+    class C,D data;
+    class E,F,G,H network;
 ```
 
 **GPS Data Format:**
@@ -204,12 +248,25 @@ The ESP32 device collects GPS coordinates and sends them to the server:
 
 The server processes GPS data and forwards it to all connected dashboard clients:
 
-```
-┌────────────────┐      ┌────────────────┐       ┌────────────────┐
-│                │      │                │       │                │
-│ Data Reception │─────►│ History Storage│──────►│ WebSocket      │
-│ from ESP32     │      │                │       │ Broadcast      │
-└────────────────┘      └────────────────┘       └────────────────┘
+```mermaid
+flowchart LR
+    A[Data Reception] --> B[Timestamp Addition]
+    B --> C[Format Validation]
+    C --> D[GPS History Storage]
+    D --> E[Add to Memory Cache]
+    
+    %% Handle different client types
+    D --> F[WebSocket Broadcast]
+    F --> G[Dashboard Clients]
+    F --> H[Mobile Clients]
+    
+    classDef server fill:#e1d1ff,stroke:#5c2d91,stroke-width:1px;
+    classDef storage fill:#d8f3d8,stroke:#107c10,stroke-width:1px;
+    classDef client fill:#ffefe3,stroke:#d16b00,stroke-width:1px;
+    
+    class A,B,C server;
+    class D,E storage;
+    class F,G,H client;
 ```
 
 **WebSocket Message Format:**
@@ -249,19 +306,42 @@ The system implements two methods of theft detection:
    - Simulates a theft scenario for testing
 
 **Theft Response Sequence:**
-```
-┌────────────────┐      ┌────────────────┐      ┌────────────────┐
-│                │      │                │      │                │
-│ Theft Detected │─────►│ SMS Alert with │─────►│ Call to Owner  │
-│                │      │ GPS Location   │      │                │
-└────────┬───────┘      └────────────────┘      └────────────────┘
-         │
-         ▼
-┌────────────────┐      ┌────────────────┐
-│ Activate Local │      │ Flash LED      │
-│ Buzzer Alarm   │─────►│ Warning Light  │
-│                │      │                │
-└────────────────┘      └────────────────┘
+
+```mermaid
+flowchart TD
+    A[Theft Detected] --> B{Trigger Source}
+    B -->|Limit Switch| C[Physical Sensor Triggered]
+    B -->|Remote API| D[Remote Trigger Activated]
+    
+    C --> E[Set Theft Flag]
+    D --> E
+    
+    E --> F1[Activate Buzzer]
+    E --> F2[Flash LED Warning]
+    E --> F3[Prepare SMS Alert]
+    
+    F1 --> G1[Generate Alarm Pattern<br>High-Low-High Tone]
+    F2 --> G2[Rapid Flashing<br>Red Warning]
+    F3 --> G3[Format SMS with<br>GPS Coordinates]
+    
+    G3 --> H[Send SMS to Owner]
+    H --> I[Initiate Phone Call]
+    I --> J[Wait for Answer<br>15 seconds]
+    J --> K[End Call]
+    
+    L[Continue Alarm<br>Until Reset] --> L
+    G1 --> L
+    G2 --> L
+    
+    classDef trigger fill:#ffcccc,stroke:#cc0000,stroke-width:2px;
+    classDef action fill:#ccffcc,stroke:#00cc00,stroke-width:2px;
+    classDef alert fill:#ffebcc,stroke:#ff9900,stroke-width:2px;
+    classDef communication fill:#cce5ff,stroke:#0066cc,stroke-width:2px;
+    
+    class A,B,C,D trigger;
+    class E,F1,F2,F3 action;
+    class G1,G2,G3,L alert;
+    class H,I,J,K communication;
 ```
 
 ## Configuration
