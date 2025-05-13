@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Monitoring Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'tesla-red': '#e82127',
+                        'dark': '#121212',
+                        'dark-gray': '#1e1e1e',
+                        'medium-gray': '#2d2d2d',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Custom styles -->
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+        }
+        .map-container {
+            height: 55vh;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .dashboard-card {
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(232, 33, 39, 0.1);
+        }
+        .tesla-glow {
+            box-shadow: 0 0 15px rgba(232, 33, 39, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-white">Red-<span class="text-tesla-red">Misst</span></h1>
+                <p class="text-gray-400">Vehicle Monitoring System</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="px-4 py-2 bg-medium-gray rounded-full text-sm text-white flex items-center">
+                    <span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                    <span>Connected</span>
+                </span>
+                <span class="text-white text-lg" id="current-time">00:00:00</span>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Map section - Takes 2/3 of the screen on large devices -->
+            <div class="lg:col-span-2">
+                <div class="dashboard-card p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Vehicle Location</h2>
+                        <div class="flex items-center gap-2">
+                            <button class="bg-medium-gray hover:bg-tesla-red text-white p-2 rounded-full transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </button>
+                            <button class="bg-medium-gray hover:bg-tesla-red text-white p-2 rounded-full transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="map" class="map-container"></div>
+                    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-dark-gray p-3 rounded-lg">
+                            <p class="text-gray-400 text-sm">Speed</p>
+                            <p class="text-2xl font-bold text-white"><span id="current-speed">4</span> km/h</p>
+                        </div>
+                        <div class="bg-dark-gray p-3 rounded-lg">
+                            <p class="text-gray-400 text-sm">Distance</p>
+                            <p class="text-2xl font-bold text-white"><span id="total-distance">126.8</span>m</p>
+                        </div>
+                        <div class="bg-dark-gray p-3 rounded-lg">
+                            <p class="text-gray-400 text-sm">Duration</p>
+                            <p class="text-2xl font-bold text-white"><span id="trip-duration">20:56</span></p>
+                        </div>
+                     
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side panel with vehicle details -->
+            <div>
+                <!-- Vehicle status -->
+                <div class="dashboard-card p-4 mb-6">
+                    <h2 class="text-xl font-semibold mb-4">Sensor Status</h2>
+                    <div class="relative">
+                        <div class="flex justify-center mb-4">
+                            <div class="relative w-64">
+                                <!-- Car SVG/image placeholder -->
+                                <svg viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg" class="w-full">
+                                    <path d="M85,20.5 C85,15 75,10 50,10 C25,10 15,15 15,20.5 C15,26 15,30 15,30 L85,30 C85,30 85,26 85,20.5 Z" fill="#2d2d2d" stroke="#e82127" stroke-width="0.5"/>
+                                    <ellipse cx="25" cy="30" rx="5" ry="5" fill="#2d2d2d" stroke="#e82127" stroke-width="0.5"/>
+                                    <ellipse cx="75" cy="30" rx="5" ry="5" fill="#2d2d2d" stroke="#e82127" stroke-width="0.5"/>
+                                    <path d="M35,15 C40,12 60,12 65,15" fill="none" stroke="#e82127" stroke-width="0.5"/>
+                                </svg>
+                                <!-- Door status indicators -->
+                                <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div class="absolute top-1/4 right-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div class="absolute bottom-1/4 left-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div class="absolute bottom-1/4 right-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-dark-gray p-3 rounded-lg">
+                                <p class="text-gray-400 text-sm">Sensor Battery</p>
+                                <div class="flex items-center">
+                                    <div class="w-full bg-gray-700 rounded-full h-2.5 mr-2">
+                                        <div class="bg-tesla-red h-2.5 rounded-full" style="width: 75%"></div>
+                                    </div>
+                                    <p class="text-white font-bold">75%</p>
+                                </div>
+                            </div>
+                            <div class="bg-dark-gray p-3 rounded-lg">
+                                <p class="text-gray-400 text-sm">Data Usage</p>
+                                <p class="text-2xl font-bold text-white">3% consumed</p>
+                            </div>
+                            <div class="bg-dark-gray p-3 rounded-lg">
+                                <p class="text-gray-400 text-sm">Status</p>
+                                <p class="text-lg font-semibold text-green-500">Activated</p>
+                            </div>
+                            <div class="bg-dark-gray p-3 rounded-lg">
+                                <p class="text-gray-400 text-sm">Battery Life Left</p>
+                                <p class="text-2xl font-bold text-white">48:22 hours</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent alerts -->
+                <div class="dashboard-card p-4">
+                    <h2 class="text-xl font-semibold mb-4">Recent Alerts</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center p-2 bg-dark-gray rounded-lg">
+                            <div class="w-2 h-2 bg-tesla-red rounded-full mr-3"></div>
+                            <div>
+                                <p class="text-sm font-medium">Theft Detected</p>
+                                <p class="text-xs text-gray-400">15 min ago</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-2 bg-dark-gray rounded-lg">
+                            <div class="w-2 h-2  bg-yellow-500 rounded-full mr-3"></div>
+                            <div>
+                                <p class="text-sm font-medium">Sensor Battery below 20%</p>
+                                <p class="text-xs text-gray-400">2 hours ago</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-2 bg-dark-gray rounded-lg">
+                            <div class="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                            <div>
+                                <p class="text-sm font-medium">Software update available</p>
+                                <p class="text-xs text-gray-400">5 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Quick actions panel -->
+        <div class="mt-8 dashboard-card p-4">
+            <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 justify-center">
+                <button class="p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span class="text-sm">Lock/Unlock</span>
+                </button>
+                <button class="p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span class="text-sm">Track Vehicle</span>
+                </button>
+                <button class="p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span class="text-sm">Simulate Theft</span>
+                </button>
+                <button class="p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="text-sm">Settings</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Initialize Leaflet map with Moi University, Eldoret coordinates
+        const map = L.map('map').setView([0.2833, 35.3167], 14);
+        
+        // Apply dark theme map tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Custom marker icon with Tesla red color
+        const carIcon = L.divIcon({
+            html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#e82127" width="24" height="24">
+                    <path d="M12 2C7.58 2 4 5.58 4 10c0 4.42 3.58 8 8 8s8-3.58 8-8c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/>
+                    <circle cx="12" cy="10" r="3" fill="#e82127"/>
+                  </svg>`,
+            className: 'car-marker',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        // Add car marker at default location
+        const carMarker = L.marker([0.2833, 35.3167], {icon: carIcon}).addTo(map);
+
+        // Create empty path line for tracking
+        let routePoints = [];
+        const routeLine = L.polyline(routePoints, {
+            color: '#e82127',
+            weight: 4,
+            opacity: 0.7,
+            lineJoin: 'round'
+        }).addTo(map);
+
+        // Add glowing effect to the route
+        routeLine._path.classList.add('tesla-glow');
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+        
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // WebSocket connection
+        let ws;
+        let reconnectInterval;
+        let connectionStatus = false;
+
+        // Connect to WebSocket server
+        function connectWebSocket() {
+            // Always use secure WebSocket (wss) for HTTPS server
+            const protocol = 'wss';
+            const host = window.location.host;
+            ws = new WebSocket(`${protocol}://${host}/gps`);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                connectionStatus = true;
+                document.querySelector('.inline-block.w-2.h-2.rounded-full').className = 
+                    'inline-block w-2 h-2 rounded-full bg-green-500 mr-2';
+                document.querySelector('.inline-block.w-2.h-2.rounded-full + span').textContent = 'Connected';
+                clearInterval(reconnectInterval);
+                
+                // Fetch GPS history on connection
+                fetchGPSHistory();
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                connectionStatus = false;
+                document.querySelector('.inline-block.w-2.h-2.rounded-full').className = 
+                    'inline-block w-2 h-2 rounded-full bg-red-500 mr-2';
+                document.querySelector('.inline-block.w-2.h-2.rounded-full + span').textContent = 'Disconnected';
+                
+                // Try to reconnect
+                clearInterval(reconnectInterval);
+                reconnectInterval = setInterval(connectWebSocket, 5000);
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'gps' && data.payload) {
+                        updateGPSData(data.payload);
+                    } else if (data.type === 'limitTrigger') {
+                        // Add a new alert for theft detection
+                        addAlert('Theft Detected', 'just now', 'bg-tesla-red');
+                    }
+                } catch (err) {
+                    console.error('Error parsing message:', err);
+                }
+            };
+        }
+
+        // Fetch GPS history from server
+        async function fetchGPSHistory() {
+            try {
+                const response = await fetch('/api/gps-history');
+                const history = await response.json();
+                
+                if (history.length > 0) {
+                    // Clear existing route
+                    routePoints = [];
+                    
+                    // Add all points to route
+                    history.forEach(point => {
+                        if (point.lat && point.lng) {
+                            routePoints.push([point.lat, point.lng]);
+                        }
+                    });
+                    
+                    // Update route line
+                    routeLine.setLatLngs(routePoints);
+                    
+                    // Update marker to latest position
+                    const latest = history[history.length - 1];
+                    updateGPSData(latest);
+                    
+                    // Fit map to show all points
+                    if (routePoints.length > 1) {
+                        map.fitBounds(routeLine.getBounds());
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching GPS history:', err);
+            }
+        }
+
+        // Update GPS data on map and dashboard
+        function updateGPSData(data) {
+            if (data.lat && data.lng) {
+                // Update marker position
+                carMarker.setLatLng([data.lat, data.lng]);
+                
+                // Add to route if it's a new point (avoid duplicates)
+                const lastPoint = routePoints.length > 0 ? routePoints[routePoints.length - 1] : null;
+                if (!lastPoint || lastPoint[0] !== data.lat || lastPoint[1] !== data.lng) {
+                    routePoints.push([data.lat, data.lng]);
+                    routeLine.setLatLngs(routePoints);
+                }
+                
+                // Calculate speed - either use provided speed or calculate from distance
+                let speed = 0;
+                if (data.speed) {
+                    speed = data.speed;
+                } else if (lastPoint) {
+                    // Calculate speed based on distance between points and time difference (rough estimate)
+                    const distance = calculateDistance(lastPoint[0], lastPoint[1], data.lat, data.lng);
+                    const timeDiff = (data.timestamp ? new Date(data.timestamp) : new Date()) - 
+                                    (routePoints.length > 1 ? new Date(Date.now() - 10000) : new Date());
+                    speed = (distance / (timeDiff / 1000 / 60 / 60)).toFixed(1); // km/h
+                }
+                
+                // Update dashboard info
+                document.getElementById('current-speed').textContent = speed;
+                
+                // Calculate total distance if we have multiple points
+                if (routePoints.length > 1) {
+                    let totalDistance = 0;
+                    for (let i = 1; i < routePoints.length; i++) {
+                        totalDistance += calculateDistance(
+                            routePoints[i-1][0], routePoints[i-1][1], 
+                            routePoints[i][0], routePoints[i][1]
+                        );
+                    }
+                    document.getElementById('total-distance').textContent = totalDistance.toFixed(1);
+                }
+                
+                // Update trip duration if we have a timestamp
+                if (data.timestamp) {
+                    const startTime = routePoints.length > 1 ? 
+                        new Date(Date.now() - (routePoints.length * 10000)) : new Date(Date.now() - 60000);
+                    const currentTime = new Date(data.timestamp);
+                    const diffMs = currentTime - startTime;
+                    const minutes = Math.floor(diffMs / 60000);
+                    const seconds = Math.floor((diffMs % 60000) / 1000);
+                    document.getElementById('trip-duration').textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+                
+                // Center map on new location
+                map.panTo([data.lat, data.lng]);
+            }
+        }
+
+        // Calculate distance between two coordinates in kilometers (Haversine formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Add a new alert to the dashboard
+        function addAlert(text, time, colorClass) {
+            const alertsContainer = document.querySelector('.dashboard-card .space-y-3');
+            
+            // Create new alert element
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'flex items-center p-2 bg-dark-gray rounded-lg';
+            alertDiv.innerHTML = `
+                <div class="w-2 h-2 ${colorClass} rounded-full mr-3"></div>
+                <div>
+                    <p class="text-sm font-medium">${text}</p>
+                    <p class="text-xs text-gray-400">${time}</p>
+                </div>
+            `;
+            
+            // Add to the top of the list
+            if (alertsContainer.firstChild) {
+                alertsContainer.insertBefore(alertDiv, alertsContainer.firstChild);
+            } else {
+                alertsContainer.appendChild(alertDiv);
+            }
+            
+            // Remove oldest alert if we have more than 5
+            if (alertsContainer.children.length > 5) {
+                alertsContainer.removeChild(alertsContainer.lastChild);
+            }
+        }
+
+        // Fetch and update phone numbers
+        async function fetchConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                // We might use this to display or update phone numbers in the UI
+                console.log('Config loaded:', config);
+            } catch (err) {
+                console.error('Error fetching config:', err);
+            }
+        }
+
+        // Simulate theft
+        async function simulateTheft() {
+            try {
+                await fetch('/api/simulate-trigger', { method: 'POST' });
+                addAlert('Theft simulation triggered', 'just now', 'bg-tesla-red');
+            } catch (err) {
+                console.error('Error triggering theft simulation:', err);
+            }
+        }
+
+        // Initialize
+        connectWebSocket();
+        fetchConfig();
+
+        // Set up button click listeners
+        document.querySelector('button:has(.path[d*="M13 10V3L4 14h7v7l9-11h-7z"])').addEventListener('click', function() {
+            window.location.href = '/gps-locator';
+        });
+
+        // Add simulate theft button to quick actions
+        const quickActionsContainer = document.querySelector('.grid.grid-cols-2.sm\\:grid-cols-3.md\\:grid-cols-6.gap-4');
+        const simulateButton = document.createElement('button');
+        simulateButton.className = 'p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center';
+        simulateButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span class="text-sm">Simulate Theft</span>
+        `;
+        simulateButton.addEventListener('click', simulateTheft);
+        quickActionsContainer.appendChild(simulateButton);
+
+        // Add settings button to quick actions
+        const settingsButton = document.createElement('button');
+        settingsButton.className = 'p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center';
+        settingsButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="text-sm">Settings</span>
+        `;
+        settingsButton.addEventListener('click', function() {
+            window.location.href = '/gps-locator#settings';
+        });
+        quickActionsContainer.appendChild(settingsButton);
+    </script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time GPS Tracker</title>
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 85vh;
+        }
+        .controls {
+            background-color: #121212;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .connected {
+            background-color: #4CAF50;
+        }
+        .disconnected {
+            background-color: #F44336;
+        }
+        .info-panel {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            max-width: 300px;
+        }
+        .coordinates {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .btn {
+            background-color: #e82127;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #c61a1f;
+        }
+        .settings {
+            margin-top: 10px;
+        }
+        .settings label {
+            display: block;
+            margin-top: 5px;
+        }
+        .settings input {
+            width: 100%;
+            padding: 5px;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h2>GPS Tracker</h2>
+        <div>
+            <button id="settingsBtn" class="btn">Settings</button>
+            <button id="simulateBtn" class="btn">Simulate Theft</button>
+        </div>
+        <div class="status">
+            <div id="connectionStatus" class="status-indicator disconnected"></div>
+            <span id="statusText">Disconnected</span>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div id="infoPanel" class="info-panel" style="display: none;">
+        <div class="coordinates">
+            <strong>Current Position:</strong>
+            <div>Latitude: <span id="latValue">-</span></div>
+            <div>Longitude: <span id="lngValue">-</span></div>
+            <div>Last Update: <span id="lastUpdate">-</span></div>
+        </div>
+        
+        <div id="settingsPanel" class="settings" style="display: none;">
+            <h3>Settings</h3>
+            <label for="ownerNumber">Owner Phone Number:</label>
+            <input type="tel" id="ownerNumber" placeholder="e.g., 0714874451">
+            
+            <label for="simNumber">SIM Card Number:</label>
+            <input type="tel" id="simNumber" placeholder="e.g., 0114931050">
+            
+            <label for="simPin">SIM PIN:</label>
+            <input type="password" id="simPin" placeholder="PIN">
+            
+            <button id="saveSettingsBtn" class="btn" style="margin-top: 10px;">Save</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([0.2833, 35.3167], 14); // Default to Moi University
+        
+        // Add dark theme map tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Custom marker icon
+        const carIcon = L.divIcon({
+            html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#e82127" width="24" height="24">
+                    <path d="M12 2C7.58 2 4 5.58 4 10c0 4.42 3.58 8 8 8s8-3.58 8-8c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/>
+                    <circle cx="12" cy="10" r="3" fill="#e82127"/>
+                  </svg>`,
+            className: 'car-marker',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        // Add car marker
+        const carMarker = L.marker([0.2833, 35.3167], { icon: carIcon }).addTo(map);
+        
+        // Path line for tracking
+        let routePoints = [];
+        const routeLine = L.polyline(routePoints, {
+            color: '#e82127',
+            weight: 4,
+            opacity: 0.7,
+            lineJoin: 'round'
+        }).addTo(map);
+
+        // WebSocket connection
+        let ws;
+        let reconnectInterval;
+        const connectWebSocket = () => {
+            // Always use secure WebSocket (wss) for HTTPS server
+            const protocol = 'wss';
+            const host = window.location.host;
+            ws = new WebSocket(`${protocol}://${host}/gps`);
+            
+            ws.onopen = () => {
+                document.getElementById('connectionStatus').className = 'status-indicator connected';
+                document.getElementById('statusText').textContent = 'Connected';
+                clearInterval(reconnectInterval);
+                console.log('WebSocket connected');
+                
+                // Fetch GPS history when connected
+                fetchGPSHistory();
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('connectionStatus').className = 'status-indicator disconnected';
+                document.getElementById('statusText').textContent = 'Disconnected';
+                console.log('WebSocket disconnected');
+                
+                // Try to reconnect
+                clearInterval(reconnectInterval);
+                reconnectInterval = setInterval(connectWebSocket, 5000);
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'gps' && data.payload) {
+                        updateGPSData(data.payload);
+                    } else if (data.type === 'config' && data.payload) {
+                        updateConfigFields(data.payload);
+                    }
+                } catch (err) {
+                    console.error('Error parsing message:', err);
+                }
+            };
+        };
+
+        // Fetch GPS history from API
+        const fetchGPSHistory = async () => {
+            try {
+                const response = await fetch('/api/gps-history');
+                const history = await response.json();
+                
+                if (history.length > 0) {
+                    // Clear existing route
+                    routePoints = [];
+                    
+                    // Add all points to route
+                    history.forEach(point => {
+                        routePoints.push([point.lat, point.lng]);
+                    });
+                    
+                    // Update route line
+                    routeLine.setLatLngs(routePoints);
+                    
+                    // Update marker to latest position
+                    const latest = history[history.length - 1];
+                    updateGPSData(latest);
+                    
+                    // Fit map to show all points
+                    if (routePoints.length > 1) {
+                        map.fitBounds(routeLine.getBounds());
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching GPS history:', err);
+            }
+        };
+
+        // Update GPS data on map
+        const updateGPSData = (data) => {
+            if (data.lat && data.lng) {
+                // Update marker position
+                carMarker.setLatLng([data.lat, data.lng]);
+                
+                // Add to route if it's a new point (avoid duplicates)
+                const lastPoint = routePoints.length > 0 ? routePoints[routePoints.length - 1] : null;
+                if (!lastPoint || lastPoint[0] !== data.lat || lastPoint[1] !== data.lng) {
+                    routePoints.push([data.lat, data.lng]);
+                    routeLine.setLatLngs(routePoints);
+                }
+                
+                // Update info panel
+                document.getElementById('latValue').textContent = data.lat.toFixed(6);
+                document.getElementById('lngValue').textContent = data.lng.toFixed(6);
+                document.getElementById('lastUpdate').textContent = new Date(data.timestamp || Date.now()).toLocaleTimeString();
+                
+                // Show info panel if hidden
+                document.getElementById('infoPanel').style.display = 'block';
+                
+                // Center map on new location
+                map.panTo([data.lat, data.lng]);
+            }
+        };
+
+        // Fetch and update configuration
+        const fetchConfig = async () => {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                updateConfigFields(config);
+            } catch (err) {
+                console.error('Error fetching config:', err);
+            }
+        };
+
+        // Update configuration fields
+        const updateConfigFields = (config) => {
+            document.getElementById('ownerNumber').value = config.ownerNumber || '';
+            document.getElementById('simNumber').value = config.simNumber || '';
+            document.getElementById('simPin').value = config.simPin || '';
+        };
+
+        // Save settings
+        const saveSettings = async () => {
+            const config = {
+                ownerNumber: document.getElementById('ownerNumber').value,
+                simNumber: document.getElementById('simNumber').value,
+                simPin: document.getElementById('simPin').value
+            };
+            
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+                
+                if (response.ok) {
+                    alert('Settings saved successfully');
+                    toggleSettingsPanel(false);
+                } else {
+                    alert('Failed to save settings');
+                }
+            } catch (err) {
+                console.error('Error saving settings:', err);
+                alert('Error saving settings');
+            }
+        };
+
+        // Simulate theft
+        const simulateTheft = async () => {
+            try {
+                const response = await fetch('/api/simulate-trigger', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    alert('Theft simulation triggered');
+                } else {
+                    alert('Failed to trigger theft simulation');
+                }
+            } catch (err) {
+                console.error('Error triggering theft simulation:', err);
+                alert('Error triggering theft simulation');
+            }
+        };
+
+        // Toggle settings panel
+        const toggleSettingsPanel = (show) => {
+            document.getElementById('settingsPanel').style.display = show ? 'block' : 'none';
+            document.getElementById('infoPanel').style.display = show || routePoints.length > 0 ? 'block' : 'none';
+        };
+
+        // Event listeners
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            const settingsPanel = document.getElementById('settingsPanel');
+            toggleSettingsPanel(settingsPanel.style.display === 'none');
+        });
+        
+        document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+        document.getElementById('simulateBtn').addEventListener('click', simulateTheft);
+
+        // Initialize
+        connectWebSocket();
+        fetchConfig();
+    </script>
+</body>
+</html>
