@@ -1,13 +1,26 @@
 {
   "name": "car-theft-system",
   "version": "1.0.0",
+  "description": "GPS tracking system for vehicle theft prevention",
   "type": "module",
+  "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.13.0",
     "http": "^0.0.1-security"
-  }
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "keywords": ["gps", "tracking", "vehicle", "security"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "private": true
 }
