@@ -1,0 +1,98 @@
+body {
+    background-color: #121212;
+    color: white;
+}
+
+.map-container {
+    height: 55vh;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.dashboard-card {
+    background-color: #1e1e1e;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(232, 33, 39, 0.1);
+}
+
+.tesla-glow {
+    box-shadow: 0 0 15px rgba(232, 33, 39, 0.3);
+}
+
+/* Alert animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.alert-flash {
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+/* Connection status indicators */
+.status-indicator {
+    transition: background-color 0.3s ease;
+}
+
+.status-indicator.connected {
+    background-color: #10b981;
+}
+
+.status-indicator.disconnected {
+    background-color: #ef4444;
+}
+
+.status-indicator.armed {
+    background-color: #e82127;
+}
+
+.status-indicator.disarmed {
+    background-color: #10b981;
+}
+
+/* Button hover effects */
+.quick-action-btn {
+    transition: all 0.3s ease;
+}
+
+.quick-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Loading spinner */
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e82127;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Alert markers on map */
+.alert-marker {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+    .map-container {
+        height: 40vh;
+    }
+    
+    .dashboard-card {
+        margin-bottom: 1rem;
+    }
+}

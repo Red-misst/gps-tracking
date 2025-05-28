@@ -6,7 +6,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "build": "echo 'No build step needed for this project'",
+    "test": "echo 'No tests specified'"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -16,11 +18,11 @@
   "devDependencies": {
     "nodemon": "^2.0.22"
   },
-  "keywords": ["gps", "tracking", "vehicle", "security"],
+  "keywords": ["gps", "tracking", "vehicle", "security", "websocket", "realtime"],
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
   "private": true
 }
