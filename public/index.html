@@ -28,6 +28,59 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/dashboard.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .dashboard-card {
+            background-color: #1e1e1e;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .map-container {
+            height: 60vh;
+            width: 100%;
+            border-radius: 0.5rem;
+        }
+        .quick-action-btn {
+            transition: all 0.2s ease;
+        }
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #e82127;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tesla-glow {
+            filter: drop-shadow(0 0 5px rgba(232, 33, 39, 0.6));
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-connected {
+            background-color: #4CAF50;
+        }
+        .status-disconnected {
+            background-color: #F44336;
+        }
+        .status-armed {
+            background-color: #e82127;
+        }
+        .status-disarmed {
+            background-color: #4CAF50;
+        }
+    </style>
 </head>
 <body class="min-h-screen">
     <div class="container mx-auto px-4 py-6">
@@ -39,11 +92,11 @@
             </div>
             <div class="flex items-center gap-4">
                 <span class="px-4 py-2 bg-medium-gray rounded-full text-sm text-white flex items-center">
-                    <span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2" id="connectionIndicator"></span>
+                    <span class="status-indicator status-disconnected mr-2" id="connectionIndicator"></span>
                     <span id="connectionText">Connecting...</span>
                 </span>
                 <span class="px-4 py-2 bg-medium-gray rounded-full text-sm text-white flex items-center">
-                    <span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-2" id="systemIndicator"></span>
+                    <span class="status-indicator status-disarmed mr-2" id="systemIndicator"></span>
                     <span id="systemText">Disarmed</span>
                 </span>
                 <span class="text-white text-lg" id="current-time">00:00:00</span>
@@ -115,49 +168,20 @@
                     </div>
                 </div>
 
-                <!-- Vehicle status -->
+                <!-- Phone number configuration -->
                 <div class="dashboard-card p-4 mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Sensor Status</h2>
-                    <div class="relative">
-                        <div class="flex justify-center mb-4">
-                            <div class="relative w-64">
-                                <!-- Car SVG/image placeholder -->
-                                <svg viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg" class="w-full">
-                                    <path d="M85,20.5 C85,15 75,10 50,10 C25,10 15,15 15,20.5 C15,26 15,30 15,30 L85,30 C85,30 85,26 85,20.5 Z" fill="#2d2d2d" stroke="#e82127" stroke-width="0.5"/>
-                                    <ellipse cx="25" cy="30" rx="5" ry="5" fill="#2d2d2d" stroke="#e82127" stroke-width="0.5"/>
-                                    <ellipse cx="75" cy="30" rx="5" ry="5" fill="#2d2d2d" stroke="#e82127" stroke-width="0.5"/>
-                                    <path d="M35,15 C40,12 60,12 65,15" fill="none" stroke="#e82127" stroke-width="0.5"/>
-                                </svg>
-                                <!-- Door status indicators -->
-                                <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
-                                <div class="absolute top-1/4 right-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
-                                <div class="absolute bottom-1/4 left-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
-                                <div class="absolute bottom-1/4 right-1/4 w-2 h-2 bg-green-500 rounded-full"></div>
+                    <h2 class="text-xl font-semibold mb-4">Phone Configuration</h2>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="bg-dark-gray p-3 rounded-lg">
+                            <label for="ownerPhone" class="text-gray-400 text-sm">Owner Phone Number</label>
+                            <div class="flex mt-2">
+                                <input type="tel" id="ownerPhone" placeholder="+254714874451" class="w-full bg-medium-gray text-white p-2 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-tesla-red">
+                                <button id="updatePhoneBtn" class="bg-tesla-red px-4 py-2 rounded-r-lg">Update</button>
                             </div>
                         </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-dark-gray p-3 rounded-lg">
-                                <p class="text-gray-400 text-sm">Sensor Battery</p>
-                                <div class="flex items-center">
-                                    <div class="w-full bg-gray-700 rounded-full h-2.5 mr-2">
-                                        <div class="bg-tesla-red h-2.5 rounded-full" style="width: 75%"></div>
-                                    </div>
-                                    <p class="text-white font-bold">75%</p>
-                                </div>
-                            </div>
-                            <div class="bg-dark-gray p-3 rounded-lg">
-                                <p class="text-gray-400 text-sm">Data Usage</p>
-                                <p class="text-2xl font-bold text-white">3% consumed</p>
-                            </div>
-                            <div class="bg-dark-gray p-3 rounded-lg">
-                                <p class="text-gray-400 text-sm">Status</p>
-                                <p class="text-lg font-semibold text-green-500">Activated</p>
-                            </div>
-                            <div class="bg-dark-gray p-3 rounded-lg">
-                                <p class="text-gray-400 text-sm">Battery Life Left</p>
-                                <p class="text-2xl font-bold text-white">48:22 hours</p>
-                            </div>
+                        <div class="bg-dark-gray p-3 rounded-lg">
+                            <p class="text-gray-400 text-sm">SIM Number</p>
+                            <p class="text-lg font-semibold" id="simNumberDisplay">+254743600744</p>
                         </div>
                     </div>
                 </div>
@@ -181,7 +205,7 @@
         <!-- Quick actions panel -->
         <div class="mt-8 dashboard-card p-4">
             <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 justify-center">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 justify-center">
                 <button id="quickArmBtn" class="quick-action-btn p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -200,15 +224,22 @@
                     </svg>
                     <span class="text-sm">Simulate Theft</span>
                 </button>
-                <button class="quick-action-btn p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
+                <button id="getStatusBtn" class="quick-action-btn p-4 bg-dark-gray hover:bg-blue-600 text-white rounded-lg transition-colors flex flex-col items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span class="text-sm">Settings</span>
+                    <span class="text-sm">Get Status</span>
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- Coordinates Info Panel -->
+    <div id="coordinatesPanel" class="fixed bottom-4 left-4 bg-dark-gray p-3 rounded-lg shadow-lg text-white z-50">
+        <div class="font-semibold mb-2">GPS Coordinates</div>
+        <div>Latitude: <span id="latValue">--</span></div>
+        <div>Longitude: <span id="lngValue">--</span></div>
+        <div class="text-xs text-gray-400 mt-1">Last updated: <span id="lastGpsUpdate">--</span></div>
     </div>
 
     <!-- Loading indicator (hidden by default) -->

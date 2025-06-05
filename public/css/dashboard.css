@@ -86,6 +86,17 @@ body {
     animation: pulse 2s ease-in-out infinite;
 }
 
+/* Theft alert styling */
+.theft-alert {
+    animation: theft-flash 0.5s ease-in-out infinite;
+}
+
+@keyframes theft-flash {
+    0% { background-color: #121212; }
+    50% { background-color: #350000; }
+    100% { background-color: #121212; }
+}
+
 /* Responsive design improvements */
 @media (max-width: 768px) {
     .map-container {
