@@ -40,9 +40,14 @@
             overflow: hidden;
         }
         .map-container {
-            height: 60vh;
+            height: 50vh;
             width: 100%;
             border-radius: 0.5rem;
+        }
+        @media (min-width: 768px) {
+            .map-container {
+                height: 60vh;
+            }
         }
         .quick-action-btn {
             transition: all 0.2s ease;
@@ -83,62 +88,61 @@
     </style>
 </head>
 <body class="min-h-screen">
-    <div class="container mx-auto px-4 py-6">
+    <div class="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <!-- Header -->
-        <header class="flex justify-between items-center mb-8">
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-8 gap-3">
             <div>
-                <h1 class="text-3xl font-bold text-white">Red-<span class="text-tesla-red">Misst</span></h1>
                 <p class="text-gray-400">Vehicle Monitoring System</p>
             </div>
-            <div class="flex items-center gap-4">
-                <span class="px-4 py-2 bg-medium-gray rounded-full text-sm text-white flex items-center">
+            <div class="flex flex-wrap items-center justify-center sm:justify-end gap-2 sm:gap-4 w-full sm:w-auto">
+                <span class="px-3 py-1 sm:px-4 sm:py-2 bg-medium-gray rounded-full text-xs sm:text-sm text-white flex items-center">
                     <span class="status-indicator status-disconnected mr-2" id="connectionIndicator"></span>
                     <span id="connectionText">Connecting...</span>
                 </span>
-                <span class="px-4 py-2 bg-medium-gray rounded-full text-sm text-white flex items-center">
+                <span class="px-3 py-1 sm:px-4 sm:py-2 bg-medium-gray rounded-full text-xs sm:text-sm text-white flex items-center">
                     <span class="status-indicator status-disarmed mr-2" id="systemIndicator"></span>
                     <span id="systemText">Disarmed</span>
                 </span>
-                <span class="text-white text-lg" id="current-time">00:00:00</span>
+                <span class="text-white text-base sm:text-lg" id="current-time">00:00:00</span>
             </div>
         </header>
 
         <!-- Main content -->
-        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <!-- Map section - Takes 2/3 of the screen on large devices -->
             <div class="lg:col-span-2">
-                <div class="dashboard-card p-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold">Vehicle Location</h2>
-                        <div class="flex items-center gap-2">
-                            <button id="armBtn" class="bg-tesla-red hover:bg-red-700 text-white px-4 py-2 rounded-full transition-colors text-sm">
+                <div class="dashboard-card p-3 sm:p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-0">
+                        <h2 class="text-lg sm:text-xl font-semibold">Vehicle Location</h2>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <button id="armBtn" class="bg-tesla-red hover:bg-red-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-full transition-colors text-xs sm:text-sm">
                                 ARM SYSTEM
                             </button>
-                            <button id="disarmBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-colors text-sm">
+                            <button id="disarmBtn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-full transition-colors text-xs sm:text-sm">
                                 DISARM SYSTEM
                             </button>
-                            <button id="statusBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full transition-colors text-sm">
+                            <button id="statusBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-full transition-colors text-xs sm:text-sm">
                                 GET STATUS
                             </button>
                         </div>
                     </div>
                     <div id="map" class="map-container"></div>
-                    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">Speed</p>
-                            <p class="text-2xl font-bold text-white"><span id="current-speed">0</span> km/h</p>
+                    <div class="mt-3 sm:mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">Speed</p>
+                            <p class="text-xl sm:text-2xl font-bold text-white"><span id="current-speed">0</span> km/h</p>
                         </div>
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">Distance</p>
-                            <p class="text-2xl font-bold text-white"><span id="total-distance">0</span>m</p>
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">Distance</p>
+                            <p class="text-xl sm:text-2xl font-bold text-white"><span id="total-distance">0</span>m</p>
                         </div>
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">Duration</p>
-                            <p class="text-2xl font-bold text-white"><span id="trip-duration">00:00</span></p>
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">Duration</p>
+                            <p class="text-xl sm:text-2xl font-bold text-white"><span id="trip-duration">00:00</span></p>
                         </div>
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">Connection</p>
-                            <p class="text-2xl font-bold text-white" id="esp32-status">Offline</p>
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">Connection</p>
+                            <p class="text-xl sm:text-2xl font-bold text-white" id="esp32-status">Offline</p>
                         </div>
                     </div>
                 </div>
@@ -147,53 +151,53 @@
             <!-- Side panel with vehicle details -->
             <div>
                 <!-- System Control Card -->
-                <div class="dashboard-card p-4 mb-6">
-                    <h2 class="text-xl font-semibold mb-4">System Control</h2>
-                    <div class="grid grid-cols-1 gap-4">
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">ESP32 Connection</p>
+                <div class="dashboard-card p-3 sm:p-4 mb-4 sm:mb-6">
+                    <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">System Control</h2>
+                    <div class="grid grid-cols-1 gap-3 sm:gap-4">
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">ESP32 Connection</p>
                             <div class="flex items-center justify-between">
-                                <p class="text-lg font-semibold" id="esp32ConnectionStatus">Disconnected</p>
+                                <p class="text-base sm:text-lg font-semibold" id="esp32ConnectionStatus">Disconnected</p>
                                 <span class="px-2 py-1 rounded text-xs" id="esp32StatusBadge">Offline</span>
                             </div>
                         </div>
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">Security System</p>
-                            <p class="text-lg font-semibold" id="securityStatus">Disarmed</p>
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">Security System</p>
+                            <p class="text-base sm:text-lg font-semibold" id="securityStatus">Disarmed</p>
                         </div>
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">Last Command</p>
-                            <p class="text-lg font-semibold" id="lastCommand">None</p>
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">Last Command</p>
+                            <p class="text-base sm:text-lg font-semibold" id="lastCommand">None</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Phone number configuration -->
-                <div class="dashboard-card p-4 mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Phone Configuration</h2>
-                    <div class="grid grid-cols-1 gap-4">
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <label for="ownerPhone" class="text-gray-400 text-sm">Owner Phone Number</label>
+                <div class="dashboard-card p-3 sm:p-4 mb-4 sm:mb-6">
+                    <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Phone Configuration</h2>
+                    <div class="grid grid-cols-1 gap-3 sm:gap-4">
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <label for="ownerPhone" class="text-gray-400 text-xs sm:text-sm">Owner Phone Number</label>
                             <div class="flex mt-2">
-                                <input type="tel" id="ownerPhone" placeholder="+254714874451" class="w-full bg-medium-gray text-white p-2 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-tesla-red">
-                                <button id="updatePhoneBtn" class="bg-tesla-red px-4 py-2 rounded-r-lg">Update</button>
+                                <input type="tel" id="ownerPhone" placeholder="+254714874451" class="w-full bg-medium-gray text-white p-2 text-sm rounded-l-lg focus:outline-none focus:ring-2 focus:ring-tesla-red">
+                                <button id="updatePhoneBtn" class="bg-tesla-red px-3 py-2 text-sm rounded-r-lg">Update</button>
                             </div>
                         </div>
-                        <div class="bg-dark-gray p-3 rounded-lg">
-                            <p class="text-gray-400 text-sm">SIM Number</p>
-                            <p class="text-lg font-semibold" id="simNumberDisplay">+254743600744</p>
+                        <div class="bg-dark-gray p-2 sm:p-3 rounded-lg">
+                            <p class="text-gray-400 text-xs sm:text-sm">SIM Number</p>
+                            <p class="text-base sm:text-lg font-semibold" id="simNumberDisplay">+254743600744</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Recent alerts -->
-                <div class="dashboard-card p-4">
-                    <h2 class="text-xl font-semibold mb-4">Recent Alerts</h2>
-                    <div class="space-y-3" id="alertsList">
+                <div class="dashboard-card p-3 sm:p-4">
+                    <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Recent Alerts</h2>
+                    <div class="space-y-2 sm:space-y-3" id="alertsList">
                         <div class="flex items-center p-2 bg-dark-gray rounded-lg">
                             <div class="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
                             <div>
-                                <p class="text-sm font-medium">System Ready</p>
+                                <p class="text-xs sm:text-sm font-medium">System Ready</p>
                                 <p class="text-xs text-gray-400">Initializing...</p>
                             </div>
                         </div>
@@ -203,47 +207,47 @@
         </main>
 
         <!-- Quick actions panel -->
-        <div class="mt-8 dashboard-card p-4">
-            <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 justify-center">
-                <button id="quickArmBtn" class="quick-action-btn p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="mt-6 sm:mt-8 dashboard-card p-3 sm:p-4">
+            <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Quick Actions</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-center">
+                <button id="quickArmBtn" class="quick-action-btn p-3 sm:p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 mb-1 sm:mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    <span class="text-sm">ARM System</span>
+                    <span class="text-xs sm:text-sm">ARM System</span>
                 </button>
-                <button id="quickDisarmBtn" class="quick-action-btn p-4 bg-dark-gray hover:bg-green-600 text-white rounded-lg transition-colors flex flex-col items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button id="quickDisarmBtn" class="quick-action-btn p-3 sm:p-4 bg-dark-gray hover:bg-green-600 text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 mb-1 sm:mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
                     </svg>
-                    <span class="text-sm">DISARM System</span>
+                    <span class="text-xs sm:text-sm">DISARM System</span>
                 </button>
-                <button id="simulateTheftBtn" class="quick-action-btn p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button id="simulateTheftBtn" class="quick-action-btn p-3 sm:p-4 bg-dark-gray hover:bg-tesla-red text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 mb-1 sm:mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <span class="text-sm">Simulate Theft</span>
+                    <span class="text-xs sm:text-sm">Simulate Theft</span>
                 </button>
-                <button id="getStatusBtn" class="quick-action-btn p-4 bg-dark-gray hover:bg-blue-600 text-white rounded-lg transition-colors flex flex-col items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button id="getStatusBtn" class="quick-action-btn p-3 sm:p-4 bg-dark-gray hover:bg-blue-600 text-white rounded-lg transition-colors flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 mb-1 sm:mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span class="text-sm">Get Status</span>
+                    <span class="text-xs sm:text-sm">Get Status</span>
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Coordinates Info Panel -->
-    <div id="coordinatesPanel" class="fixed bottom-4 left-4 bg-dark-gray p-3 rounded-lg shadow-lg text-white z-50">
-        <div class="font-semibold mb-2">GPS Coordinates</div>
+    <div id="coordinatesPanel" class="fixed bottom-4 left-2 sm:left-4 bg-dark-gray p-2 sm:p-3 rounded-lg shadow-lg text-white z-50 text-sm sm:text-base">
+        <div class="font-semibold mb-1 sm:mb-2">GPS Coordinates</div>
         <div>Latitude: <span id="latValue">--</span></div>
         <div>Longitude: <span id="lngValue">--</span></div>
         <div class="text-xs text-gray-400 mt-1">Last updated: <span id="lastGpsUpdate">--</span></div>
     </div>
 
     <!-- Loading indicator (hidden by default) -->
-    <div id="loadingIndicator" class="fixed top-4 right-4 bg-dark-gray p-3 rounded-lg text-white hidden">
+    <div id="loadingIndicator" class="fixed top-2 sm:top-4 right-2 sm:right-4 bg-dark-gray p-2 sm:p-3 rounded-lg text-white text-sm hidden">
         <div class="flex items-center">
             <div class="loading-spinner mr-2"></div>
             <span>Loading...</span>

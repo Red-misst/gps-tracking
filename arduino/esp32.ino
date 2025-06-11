@@ -17,14 +17,14 @@ WiFiClient wifiClient;
 WebSocketsClient webSocket;
 
 // ==== Server Configuration ====
-// Use local development server (the IP address should be your computer's local IP address)
-const char server[] = "192.168.0.105";  // Replace with your actual computer's IP address
-const int wsPort = 3000;                // Local development port
+// Use production server with secure WebSocket
+const char server[] = "gps-tracking-1rnf.onrender.com";  // Production server
+const int wsPort = 443;                                  // Standard HTTPS/WSS port
 const char wsPath[] = "/";
 
-// For production use:
-// const char server[] = "gps-tracking-1rnf.onrender.com";
-// const int wsPort = 80;
+// For local development:
+// const char server[] = "192.168.0.106";  // Local IP address
+// const int wsPort = 3000;                // Local development port
 
 // ==== WiFi Configuration ====
 const char* ssid = "Tenda_5C30C8";
@@ -44,30 +44,46 @@ String ownerNumber = "+254714874451";
 #define MODEM_POWER_ON   23
 #define MODEM_RST        5
 #define LIMIT_SWITCH_PIN 34
-#define LED_PIN          12
+#define LED_PIN          12           // External LED
+#define BUILTIN_LED      2            // ESP32 built-in LED
 #define BUZZER_PIN       13
+
+// ==== Default GPS Location (Moi University, Kesses, Eldoret) ====
+const float DEFAULT_LAT = 0.2833;
+const float DEFAULT_LNG = 35.3167;
 
 // ==== State Variables ====
 bool limitTriggered       = false;
-bool systemEnabled        = false;
+bool systemEnabled        = true;     // System is armed by default
 bool theftAlertSent       = false;
 bool wsConnected          = false;
 bool gpsReading           = false;
 bool wsInitialized        = false;
 bool systemReady          = false;
 bool wsConnectionAttempted = false;
+bool callInProgress       = false;
+volatile bool interruptTriggered = false;  // Volatile flag for interrupt detection
 unsigned long lastGPSTime = 0;
 unsigned long lastSMSTime = 0;
 unsigned long lastHeartbeat = 0;
 unsigned long wsRetryTime = 0;
 unsigned long systemStartTime = 0;
 unsigned long lastPingTime = 0;
-const unsigned long gpsInterval = 20000;    // 20 seconds
+unsigned long callStartTime = 0;
+const unsigned long gpsInterval = 5000;     // 5 seconds for more frequent updates
 const unsigned long smsRepeatInterval = 60000;
 const unsigned long heartbeatInterval = 180000;  // 3 minutes
 const unsigned long wsRetryInterval = 60000;     // 60 seconds
 const unsigned long systemStartupDelay = 20000;  // 20 seconds
 const unsigned long pingInterval = 30000;        // 30 seconds
+const unsigned long callDuration = 15000;        // Changed back to 15 seconds call duration
+
+// Interrupt Service Routine for limit switch
+void IRAM_ATTR limitSwitchISR() {
+  if (systemEnabled) {
+    interruptTriggered = true;
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -75,15 +91,18 @@ void setup() {
   
   Serial.println("ESP32 Security System starting...");
   Serial.println("Target server: https://gps-tracking-1rnf.onrender.com");
-  Serial.printf("Free heap at start: %d bytes\n", ESP.getFreeHeap());
 
   pinMode(LIMIT_SWITCH_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(BUILTIN_LED, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(MODEM_PWRKEY, OUTPUT);
   pinMode(MODEM_POWER_ON, OUTPUT);
   pinMode(MODEM_RST, OUTPUT);
-
+  
+  // Attach interrupt to limit switch pin
+  attachInterrupt(digitalPinToInterrupt(LIMIT_SWITCH_PIN), limitSwitchISR, CHANGE);
+  
   // Connect to WiFi first
   setupWiFi();
   
@@ -95,12 +114,20 @@ void setup() {
   systemStartTime = millis();
   systemReady = true;
   
+  // Signal that system is starting in armed mode
+  flashLED(3, 200);
+  
   Serial.println("Basic system initialized. WebSocket will initialize in 20 seconds...");
-  Serial.printf("Free heap after basic init: %d bytes\n", ESP.getFreeHeap());
 }
 
 void loop() {
   if (!systemReady) return;
+  
+  // Process limit switch trigger with highest priority
+  if (interruptTriggered) {
+    handleTheftTrigger();
+    interruptTriggered = false;
+  }
   
   // Check WiFi connection and reconnect if necessary
   if (!wifiConnected) {
@@ -123,8 +150,26 @@ void loop() {
   sendHeartbeat();
   retryWebSocketConnection();
   updateStatusLED();
+  handlePhoneCall();
   
   delay(100);  // Short delay to reduce CPU usage
+}
+
+// Handle ongoing phone call
+void handlePhoneCall() {
+  if (!callInProgress) return;
+  
+  unsigned long now = millis();
+  
+  // End the call after the specified duration
+  if (now - callStartTime >= callDuration) {
+    Serial.println("Ending theft alert call");
+    modem.callHangup();
+    callInProgress = false;
+    
+    // Add a short beep to indicate end of call
+    tone(BUZZER_PIN, 2000, 200);
+  }
 }
 
 void setupWiFi() {
@@ -163,14 +208,14 @@ void setupWebSocket() {
   
   wsConnectionAttempted = true;
   
-  Serial.printf("Connecting to server: %s:%d%s\n", server, wsPort, wsPath);
+  Serial.printf("Connecting to secure server: %s:%d%s\n", server, wsPort, wsPath);
   
-  // Configure WebSocket client
-  webSocket.begin(server, wsPort, wsPath);
+  // Configure WebSocket client for SSL connection
+  webSocket.beginSSL(server, wsPort, wsPath);
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(5000);
   
-  Serial.println("WebSocket initialized");
+  Serial.println("Secure WebSocket initialized");
   
   wsInitialized = true;
   lastPingTime = millis();
@@ -189,6 +234,13 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       
       // Send identification when connected
       sendIdentification();
+      
+      // Also send initial system status (since we're in armed mode by default)
+      sendSystemStatus(systemEnabled ? "ARMED" : "DISARMED");
+      
+      // Immediately send GPS position
+      sendRealTimeGPSData();
+      
       lastHeartbeat = millis();
       break;
       
@@ -437,25 +489,49 @@ void checkTheftSensor() {
   bool current = digitalRead(LIMIT_SWITCH_PIN) == LOW;
   unsigned long now = millis();
 
+  // Backup polling detection method
   if (current && !limitTriggered) {
-    limitTriggered = true;
-    theftAlertSent = false;
-    Serial.println("THEFT DETECTED!");
-    
-    activateSimpleAlarm();
-    sendTheftSMS();
-    lastSMSTime = now;
-    theftAlertSent = true;
-    
-    // Send WebSocket alert if available
-    if (wsConnected) {
-      sendTheftAlert();
-    }
+    handleTheftTrigger();
   }
 
+  // Periodic SMS resending logic remains unchanged
   if (limitTriggered && (now - lastSMSTime >= smsRepeatInterval)) {
     sendTheftSMS();
     lastSMSTime = now;
+  }
+}
+
+// New function to handle theft trigger events
+void handleTheftTrigger() {
+  if (!systemEnabled) return;
+  
+  limitTriggered = true;
+  theftAlertSent = false;
+  Serial.println("THEFT DETECTED via interrupt!");
+  
+  activateBuzzerAlarm();
+  activateLEDAlarm();
+  sendTheftSMS();
+  initiateTheftCall();
+  lastSMSTime = millis();
+  theftAlertSent = true;
+  
+  // Send WebSocket alert if available
+  if (wsConnected) {
+    sendTheftAlert();
+  }
+}
+
+void initiateTheftCall() {
+  Serial.println("Initiating theft alert call...");
+  
+  // Start the call
+  if (modem.callNumber(ownerNumber.c_str())) {
+    Serial.println("Call initiated successfully");
+    callInProgress = true;
+    callStartTime = millis();
+  } else {
+    Serial.println("Call failed");
   }
 }
 
@@ -463,44 +539,104 @@ void sendPeriodicGPS() {
   unsigned long now = millis();
   
   if (wsConnected && (now - lastGPSTime >= gpsInterval)) {
-    sendSimpleGPSData();
+    sendRealTimeGPSData();
     lastGPSTime = now;
   }
 }
 
-void sendSimpleGPSData() {
+void sendRealTimeGPSData() {
   if (gpsReading) return;
   
   gpsReading = true;
+  bool gpsValid = false;
+  float lat = DEFAULT_LAT;
+  float lng = DEFAULT_LNG;
   
   unsigned long startTime = millis();
   
+  // Try to get real GPS data with timeout
   while (millis() - startTime < 1500) {  // 1.5 second timeout
     yield();
     
     if (SerialAT.available()) {
       char c = SerialAT.read();
       if (gps.encode(c) && gps.location.isValid()) {
-        float lat = gps.location.lat();
-        float lng = gps.location.lng();
-        
-        if (wsConnected && wsInitialized) {
-          sendGpsData(lat, lng);
-        }
+        lat = gps.location.lat();
+        lng = gps.location.lng();
+        gpsValid = true;
         break;
       }
     }
     yield();
-    delay(50);
+    delay(10);
+  }
+  
+  // Send data regardless of GPS validity (will use default if not valid)
+  if (wsConnected && wsInitialized) {
+    sendGpsData(lat, lng);
+    Serial.printf("Sent %s GPS data: %f, %f\n", 
+                  gpsValid ? "valid" : "default", lat, lng);
   }
   
   gpsReading = false;
 }
 
-void sendTheftSMS() {
-  Serial.println("Sending theft SMS...");
+void activateBuzzerAlarm() {
+  Serial.println("Activating theft alarm with buzzer!");
   
-  String smsMessage = "THEFT ALERT! Check dashboard: http://localhost:3000";
+  // More attention-grabbing alarm pattern
+  for (int i = 0; i < 5; i++) {
+    // High pitched emergency tone
+    tone(BUZZER_PIN, 2000, 200);
+    delay(300);
+    
+    // Low pitched emergency tone
+    tone(BUZZER_PIN, 1000, 300);
+    delay(400);
+    
+    yield();
+  }
+  
+  // Continuous alarm tone
+  tone(BUZZER_PIN, 1500, 2000); // 2 second alarm
+}
+
+void activateLEDAlarm() {
+  Serial.println("Activating LED alarm indicators!");
+  
+  // Use both the built-in and external LEDs in alternating pattern
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(LED_PIN, HIGH);
+    digitalWrite(BUILTIN_LED, LOW);
+    delay(100);
+    digitalWrite(LED_PIN, LOW);
+    digitalWrite(BUILTIN_LED, HIGH);
+    delay(100);
+    yield();
+  }
+  
+  // Leave external LED on as a continuous indicator
+  digitalWrite(LED_PIN, HIGH);
+  digitalWrite(BUILTIN_LED, LOW);
+}
+
+void sendTheftSMS() {
+  Serial.println("Sending theft SMS with location...");
+  
+  float lat = DEFAULT_LAT;
+  float lng = DEFAULT_LNG;
+  
+  // Try to get current location for the SMS
+  if (gps.location.isValid()) {
+    lat = gps.location.lat();
+    lng = gps.location.lng();
+  }
+  
+  // Create a message with coordinates and map link
+  String smsMessage = "THEFT ALERT! Vehicle location: " + 
+                     String(lat, 6) + "," + String(lng, 6) + 
+                     " View map: https://gps-tracking-1rnf.onrender.com/?lat=" + 
+                     String(lat, 6) + "&lng=" + String(lng, 6) + "&alert=theft";
   
   if (modem.sendSMS(ownerNumber.c_str(), smsMessage.c_str())) {
     Serial.println("Theft SMS sent successfully");
@@ -547,17 +683,30 @@ void updateStatusLED() {
   static bool ledState = false;
   unsigned long now = millis();
   
-  if (wsConnected && systemEnabled) {
+  if (limitTriggered) {
+    // Rapid flashing during theft alert (using built-in LED, external LED handled by alarm)
+    if (now - lastLEDUpdate >= 100) {
+      ledState = !ledState;
+      digitalWrite(BUILTIN_LED, ledState);
+      lastLEDUpdate = now;
+    }
+  } else if (wsConnected && systemEnabled) {
+    // Armed mode - steady on
+    digitalWrite(BUILTIN_LED, HIGH);
     digitalWrite(LED_PIN, HIGH);
   } else if (wsConnected) {
+    // Connected but disarmed - slow blink
     if (now - lastLEDUpdate >= 1000) {
       ledState = !ledState;
+      digitalWrite(BUILTIN_LED, ledState);
       digitalWrite(LED_PIN, ledState);
       lastLEDUpdate = now;
     }
   } else {
+    // Not connected - fast blink
     if (now - lastLEDUpdate >= 500) {
       ledState = !ledState;
+      digitalWrite(BUILTIN_LED, ledState);
       digitalWrite(LED_PIN, ledState);
       lastLEDUpdate = now;
     }
