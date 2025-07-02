@@ -108,7 +108,11 @@ function handleInitData(data) {
     
     // Set system status
     handleSystemStatus(data.systemStatus);
-
+    
+    // Set owner phone number
+    if (data.config && data.config.ownerNumber) {
+        document.getElementById('ownerPhone').value = data.config.ownerNumber;
+    }
     
     // Set SIM number
     if (data.config && data.config.simNumber) {
@@ -291,6 +295,11 @@ function handleTheftAlert(data) {
 // Handle config update
 function handleConfigUpdate(data) {
     console.log('Config updated:', data);
+    
+    if (data.ownerNumber) {
+        document.getElementById('ownerPhone').value = data.ownerNumber;
+        addAlert('Settings Updated', 'Phone number has been updated', 'info');
+    }
 }
 
 // Update the connection status display
@@ -496,7 +505,7 @@ function updatePhone() {
         return;
     }
     
-    
+    const phoneInput = document.getElementById('ownerPhone');
     const newPhone = phoneInput.value.trim();
     
     // Basic validation
