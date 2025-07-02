@@ -109,10 +109,7 @@ function handleInitData(data) {
     // Set system status
     handleSystemStatus(data.systemStatus);
     
-    // Set owner phone number
-    if (data.config && data.config.ownerNumber) {
-        document.getElementById('ownerPhone').value = data.config.ownerNumber;
-    }
+    
     
     // Set SIM number
     if (data.config && data.config.simNumber) {
