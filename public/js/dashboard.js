@@ -246,10 +246,8 @@ function handleSystemStatus(status) {
 
 // Handle device status update
 function handleDeviceStatus(data) {
-    console.log('Device status:', data);
     
-    if (data.deviceId === 'esp32') {
-        deviceConnected = data.status === 'connected';
+        deviceConnected = true;
         
         // Update status display
         document.getElementById('esp32-status').textContent = deviceConnected ? 'Online' : 'Offline';
@@ -273,7 +271,7 @@ function handleDeviceStatus(data) {
             addAlert('ESP32 Disconnected', 'Lost connection to the device', 'error');
         }
     }
-}
+
 
 // Handle theft alert
 function handleTheftAlert(data) {
