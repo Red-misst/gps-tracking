@@ -108,8 +108,7 @@ function handleInitData(data) {
     
     // Set system status
     handleSystemStatus(data.systemStatus);
-    
-    
+
     
     // Set SIM number
     if (data.config && data.config.simNumber) {
@@ -246,8 +245,10 @@ function handleSystemStatus(status) {
 
 // Handle device status update
 function handleDeviceStatus(data) {
+    console.log('Device status:', data);
     
-        deviceConnected = true;
+    if (data.deviceId === 'esp32') {
+        deviceConnected = data.status === 'connected';
         
         // Update status display
         document.getElementById('esp32-status').textContent = deviceConnected ? 'Online' : 'Offline';
@@ -271,7 +272,7 @@ function handleDeviceStatus(data) {
             addAlert('ESP32 Disconnected', 'Lost connection to the device', 'error');
         }
     }
-
+}
 
 // Handle theft alert
 function handleTheftAlert(data) {
@@ -290,11 +291,6 @@ function handleTheftAlert(data) {
 // Handle config update
 function handleConfigUpdate(data) {
     console.log('Config updated:', data);
-    
-    if (data.ownerNumber) {
-        document.getElementById('ownerPhone').value = data.ownerNumber;
-        addAlert('Settings Updated', 'Phone number has been updated', 'info');
-    }
 }
 
 // Update the connection status display
@@ -428,7 +424,8 @@ function setupEventListeners() {
     // Simulate theft button
     document.getElementById('simulateTheftBtn').addEventListener('click', simulateTheft);
     
-    
+    // Update phone button
+    document.getElementById('updatePhoneBtn').addEventListener('click', updatePhone);
 }
 
 // WebSocket command functions
@@ -499,7 +496,7 @@ function updatePhone() {
         return;
     }
     
-    const phoneInput = document.getElementById('ownerPhone');
+    
     const newPhone = phoneInput.value.trim();
     
     // Basic validation
