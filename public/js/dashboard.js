@@ -430,8 +430,7 @@ function setupEventListeners() {
     // Simulate theft button
     document.getElementById('simulateTheftBtn').addEventListener('click', simulateTheft);
     
-    // Update phone button
-    document.getElementById('updatePhoneBtn').addEventListener('click', updatePhone);
+    
 }
 
 // WebSocket command functions
